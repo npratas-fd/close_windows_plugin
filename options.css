@@ -1,0 +1,78 @@
+body {
+  padding: 32px 16px;
+  background: var(--bg);
+}
+
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+header {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.lede {
+  margin: 2px 0 0;
+  color: var(--muted);
+}
+
+.field {
+  margin-bottom: 20px;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.hint {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.field > .hint:last-child {
+  margin: 8px 0 0;
+}
+
+textarea {
+  resize: vertical;
+}
+
+.seconds {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.seconds input {
+  width: 100px;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+#status {
+  color: var(--success);
+}
+
+#status.error {
+  color: var(--error);
+}

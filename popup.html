@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Auto Close Tabs</title>
+    <link rel="stylesheet" href="theme.css" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <img src="icons/icon32.png" alt="" width="20" height="20" />
+      <h1>Auto Close Tabs</h1>
+    </header>
+
+    <section id="tab-status" class="card" hidden>
+      <p id="tab-status-text" role="status" aria-live="polite"></p>
+      <button id="keep-open" type="button" class="secondary">Keep this tab open</button>
+    </section>
+
+    <section id="add">
+      <form id="add-form" hidden>
+        <label for="entry">Add this page</label>
+        <div class="row">
+          <input id="entry" type="text" spellcheck="false" autocomplete="off" aria-describedby="entry-hint" />
+          <button type="submit">Add</button>
+        </div>
+        <p class="hint" id="entry-hint">
+          Shorten it to cover more pages, e.g. <code>zoom.us/j/</code> instead of a full meeting link.
+        </p>
+        <p id="add-error" class="error" role="alert" hidden></p>
+      </form>
+      <p id="add-note" class="note" role="status" hidden></p>
+    </section>
+
+    <footer>
+      <button id="open-settings" type="button" class="link">Settings</button>
+    </footer>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

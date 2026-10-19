@@ -1,0 +1,6 @@
+.DS_Store
+node_modules/
+
+# Local editor and assistant settings
+.idea/
+.claude/
