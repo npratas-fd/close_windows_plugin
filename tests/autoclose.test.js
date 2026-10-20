@@ -409,3 +409,75 @@ test('clearing the history keeps the per-entry counts', async (t) => {
 
   assert.deepEqual(browser.readStorage('local', 'closedCounts'), { 'zoom.us/j/': 1 });
 });
+
+// ---- Returning to the tab you were on --------------------------------------
+
+// Tabs [work, other], with `work` active, then a launcher page opens at the end
+// and becomes active. Closing it on its own, Chrome would show `other` (its
+// neighbour); the extension should go back to `work`.
+async function openLauncherFrom(browser) {
+  const work = browser.openTab('https://docs.example.com/work');
+  const other = browser.openTab('https://docs.example.com/other');
+  browser.activateTab(work);
+  const launcher = browser.openTab('https://zoom.us/j/1');
+  await settle();
+  return { work, other, launcher };
+}
+
+test('goes back to the tab you were on when it closes the tab you are looking at', async (t) => {
+  const { browser } = start(t, { urls: ['zoom.us/j/'], seconds: 5 });
+  const { work, launcher } = await openLauncherFrom(browser);
+
+  await advance(t, 5000);
+
+  assert.equal(browser.hasTab(launcher), false);
+  assert.equal(browser.activeTabId, work);
+});
+
+test('leaves the current tab alone when the closed tab was in the background', async (t) => {
+  const { browser } = start(t, { urls: ['zoom.us/j/'], seconds: 5 });
+  const { other, launcher } = await openLauncherFrom(browser);
+
+  browser.activateTab(other);
+  await settle();
+  await advance(t, 5000);
+
+  assert.equal(browser.hasTab(launcher), false);
+  assert.equal(browser.activeTabId, other);
+});
+
+test('still closes the tab when the tab you were on has been closed', async (t) => {
+  const { browser } = start(t, { urls: ['zoom.us/j/'], seconds: 5 });
+  const { work, other, launcher } = await openLauncherFrom(browser);
+
+  browser.closeTab(work);
+  await settle();
+  await advance(t, 5000);
+
+  assert.equal(browser.hasTab(launcher), false);
+  assert.equal(browser.activeTabId, other);
+});
+
+test('goes back to the tab you were on after the service worker restarted', async (t) => {
+  t.mock.method(console, 'error', () => {});
+  const { browser, chrome } = start(t, { urls: ['zoom.us/j/'], seconds: 60 });
+  const { work, launcher } = await openLauncherFrom(browser);
+
+  browser.terminateWorker(chrome);
+  await advance(t, 60_000);
+  browser.fireDueAlarms();
+  await settle();
+
+  assert.equal(browser.hasTab(launcher), false);
+  assert.equal(browser.activeTabId, work);
+});
+
+test('forgets which tab a closed tab came from', async (t) => {
+  const { browser } = start(t, { urls: ['zoom.us/j/'], seconds: 5 });
+  const { launcher } = await openLauncherFrom(browser);
+  assert.notEqual(browser.readStorage('session', `came-from-${launcher}`), undefined);
+
+  await advance(t, 5000);
+
+  assert.equal(browser.readStorage('session', `came-from-${launcher}`), undefined);
+});

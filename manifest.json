@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Auto Close Tabs",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Closes tabs that open listed pages (app launchers, sign-in callbacks) after a few seconds.",
   "minimum_chrome_version": "120",
   "permissions": ["tabs", "storage", "alarms"],

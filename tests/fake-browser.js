@@ -1,6 +1,7 @@
 // In-memory stand-in for the parts of Chrome the extension uses.
 //
-// One FakeBrowser holds the browser state (tabs, storage, alarms, badges).
+// One FakeBrowser holds the browser state (tabs in one window, the active tab,
+// storage, alarms, badges).
 // Each call to startWorker() creates a fresh `chrome` object, like a new
 // service worker instance, and passes it to `boot`. terminateWorker() kills an
 // instance: its API calls reject and it stops receiving events, while the
@@ -9,8 +10,9 @@
 
 export function createFakeBrowser({ sync = {}, local = {}, boot = () => {} } = {}) {
   const state = {
-    tabs: new Map(),
+    tabs: new Map(), // in tab-strip order
     nextTabId: 1,
+    activeTabId: null,
     sync: structuredClone(sync),
     local: structuredClone(local),
     session: {},
@@ -30,7 +32,7 @@ export function createFakeBrowser({ sync = {}, local = {}, boot = () => {} } = {
 
   function startWorker() {
     const worker = { alive: true, events: {} };
-    for (const name of ['onUpdated', 'onRemoved', 'onAlarm', 'onMessage']) {
+    for (const name of ['onUpdated', 'onRemoved', 'onActivated', 'onAlarm', 'onMessage']) {
       worker.events[name] = createEvent();
     }
     const call = (fn) => async (...args) => {
@@ -42,11 +44,17 @@ export function createFakeBrowser({ sync = {}, local = {}, boot = () => {} } = {
       tabs: {
         onUpdated: worker.events.onUpdated,
         onRemoved: worker.events.onRemoved,
+        onActivated: worker.events.onActivated,
         get: call(async (tabId) => tabSnapshot(requireTab(tabId))),
         remove: call(async (tabId) => removeTab(tabId)),
-        // Like Chrome, the new tab's onUpdated event may arrive before the
-        // promise resolves.
-        create: call(async ({ url }) => tabSnapshot(state.tabs.get(addTab(url, '')))),
+        update: call(async (tabId, { active }) => {
+          requireTab(tabId);
+          if (active) activate(tabId);
+          return tabSnapshot(state.tabs.get(tabId));
+        }),
+        // Like Chrome, the new tab's events may arrive before the promise
+        // resolves.
+        create: call(async ({ url, active = true }) => tabSnapshot(state.tabs.get(addTab(url, '', active)))),
       },
       storage: {
         sync: createStorageArea(() => state.sync, call),
@@ -87,27 +95,55 @@ export function createFakeBrowser({ sync = {}, local = {}, boot = () => {} } = {
     return tab;
   }
 
-  function addTab(url, title) {
-    const tab = { id: state.nextTabId++, windowId: 1, url, title, status: 'loading' };
+  function addTab(url, title, active) {
+    const tab = { id: state.nextTabId++, windowId: 1, url, title, status: 'loading', active: false };
     state.tabs.set(tab.id, tab);
+    if (active) activate(tab.id);
     emit('onUpdated', tab.id, { status: 'loading', url }, tabSnapshot(tab));
     return tab.id;
   }
 
+  function activate(tabId) {
+    if (state.activeTabId === tabId) return;
+    if (state.activeTabId !== null) state.tabs.get(state.activeTabId).active = false;
+    state.tabs.get(tabId).active = true;
+    state.activeTabId = tabId;
+    emit('onActivated', { tabId, windowId: 1 });
+  }
+
+  // Like Chrome, closing the active tab activates its neighbour (to the right
+  // if there is one), not the tab that was active before it.
   function removeTab(tabId) {
     requireTab(tabId);
+    const order = [...state.tabs.keys()];
+    const index = order.indexOf(tabId);
+    const neighbour = order[index + 1] ?? order[index - 1];
+    const wasActive = state.activeTabId === tabId;
     state.tabs.delete(tabId);
     state.badges.delete(tabId);
+    if (wasActive) state.activeTabId = null;
     emit('onRemoved', tabId, { windowId: 1, isWindowClosing: false });
+    if (wasActive && neighbour !== undefined) activate(neighbour);
   }
 
   return {
     startWorker,
     terminateWorker,
 
-    // A page opens in a new tab (e.g. launched by a desktop app).
-    openTab(url, title = '') {
-      return addTab(url, title);
+    // A page opens in a new tab at the end of the strip (e.g. launched by a
+    // desktop app); like Chrome, it becomes the active tab unless told not to.
+    openTab(url, title = '', { active = true } = {}) {
+      return addTab(url, title, active);
+    },
+
+    // The user switches to another tab.
+    activateTab(tabId) {
+      requireTab(tabId);
+      activate(tabId);
+    },
+
+    get activeTabId() {
+      return state.activeTabId;
     },
 
     // An existing tab navigates or is redirected to another URL.

@@ -52,7 +52,10 @@ between matching pages keeps the original deadline. At the deadline the tab's
 current URL is checked again against the current settings, so entries removed or
 turned off meanwhile stop pending closes. "Keep this tab open" (and reopening from
 the history) sets `keep-tab-<tabId>` in session storage; the tab is then left alone
-until it navigates to a non-matching page, which clears the flag.
+until it navigates to a non-matching page, which clears the flag. When the tab
+being closed is the active one, the worker first activates the tab that was active
+before it in the same window (recorded from `tabs.onActivated`), so Chrome doesn't
+fall back to the neighbouring tab.
 
 **Storage layout.**
 
@@ -60,7 +63,7 @@ until it navigates to a non-matching page, which clears the flag.
 | --- | --- | --- |
 | `sync` | `urls` (entries), `seconds`, `disabled` (entries turned off) | settings page, popup "Add this page" |
 | `local` | `history` (last 50 closed tabs, newest first), `closedCounts` (per entry, never reset by Clear) | service worker |
-| `session` | `close-tab-<id>` deadlines, `keep-tab-<id>` flags | service worker |
+| `session` | `close-tab-<id>` deadlines, `keep-tab-<id>` flags, `active-in-window-<windowId>` and `came-from-<id>` (tab switching) | service worker |
 
 The worker reads settings from storage on every event instead of caching them, and
 the settings page re-renders on `chrome.storage.onChanged`, so a change made
@@ -81,8 +84,9 @@ comparing strings yourself.
 
 ## Tests
 
-`tests/fake-browser.js` is an in-memory Chrome: tabs, storage areas, alarms,
-badges and messages. `startWorker()` boots a new worker instance and
+`tests/fake-browser.js` is an in-memory Chrome: one window of tabs with an active
+tab (closing the active tab activates its neighbour, as Chrome does), storage
+areas, alarms, badges and messages. `startWorker()` boots a new worker instance and
 `terminateWorker()` kills one while the browser state survives, which is how
 restart behaviour is tested; like Chrome, an alarm or a message boots a worker
 when none is running. `tests/autoclose.test.js` runs on Node's mock timers: after

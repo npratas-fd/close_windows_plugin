@@ -61,6 +61,9 @@ Every change is saved straight away; a notice at the bottom confirms it, with
 - Moving between listed pages keeps the original deadline.
 - Before closing, the tab's current address is checked against the current list,
   so removing an entry stops pending closes for it.
+- If the tab being closed is the one on screen, you are taken back to the tab you
+  were on before it (Chrome on its own would show the tab next to it). Tabs closed
+  in the background don't change which tab you are looking at.
 
 Tip: if Chrome asks "Open zoom.us?" and you haven't ticked "Always allow", make
 sure the delay leaves you time to click **Open**.

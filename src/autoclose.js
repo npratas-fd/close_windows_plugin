@@ -9,10 +9,14 @@ import { activeEntries, loadSettings } from './settings.js';
 // the current list once more. While a tab is closing, the toolbar badge shows
 // the time left. The popup can ask to keep a tab open; it then stays open until
 // it leaves the listed pages. Every tab closed here is added to the history;
-// a page reopened from it starts out kept open.
+// a page reopened from it starts out kept open. When the tab being closed is
+// the one on screen, the tab that was active before it is brought back
+// (Chrome would otherwise show its neighbour).
 
 const PENDING_PREFIX = 'close-tab-';
 const KEPT_PREFIX = 'keep-tab-';
+const ACTIVE_PREFIX = 'active-in-window-';
+const CAME_FROM_PREFIX = 'came-from-';
 const BADGE_COLOR = '#2563eb';
 
 export function registerAutoClose(chrome) {
@@ -26,6 +30,7 @@ export function registerAutoClose(chrome) {
 
   const pendingKey = (tabId) => `${PENDING_PREFIX}${tabId}`;
   const keptKey = (tabId) => `${KEPT_PREFIX}${tabId}`;
+  const cameFromKey = (tabId) => `${CAME_FROM_PREFIX}${tabId}`;
 
   const scheduleCheck = (tabId, delay) => {
     setTimeout(() => enqueue(() => closeIfDue(tabId)), delay);
@@ -66,6 +71,7 @@ export function registerAutoClose(chrome) {
     if (!tab) return;
     const entry = findMatchingEntry(tab.url, activeEntries(await loadSettings(chrome.storage.sync)));
     if (entry === null) return;
+    if (tab.active) await returnToPreviousTab(tab);
     await chrome.tabs.remove(tabId);
     await recordClosedTab(chrome.storage.local, {
       url: tab.url,
@@ -81,6 +87,23 @@ export function registerAutoClose(chrome) {
     const tab = await chrome.tabs.create({ url });
     await chrome.storage.session.set({ [keptKey(tab.id)]: true });
     return { tabId: tab.id };
+  }
+
+  // Remembers, for each tab, which tab of the same window was active just before it.
+  async function onActivated({ tabId, windowId }) {
+    const windowKey = `${ACTIVE_PREFIX}${windowId}`;
+    const { [windowKey]: previousId } = await chrome.storage.session.get(windowKey);
+    const changes = { [windowKey]: tabId };
+    if (previousId !== undefined && previousId !== tabId) changes[cameFromKey(tabId)] = previousId;
+    await chrome.storage.session.set(changes);
+  }
+
+  // Switching before closing keeps Chrome from flashing the neighbouring tab.
+  async function returnToPreviousTab(tab) {
+    const { [cameFromKey(tab.id)]: previousId } = await chrome.storage.session.get(cameFromKey(tab.id));
+    if (previousId === undefined) return;
+    const previous = await chrome.tabs.get(previousId).catch(() => null);
+    if (previous?.windowId === tab.windowId) await chrome.tabs.update(previousId, { active: true });
   }
 
   async function keepOpen(tabId) {
@@ -155,8 +178,13 @@ export function registerAutoClose(chrome) {
     if (changeInfo.url) enqueue(() => onUrlChanged(tabId, changeInfo.url));
   });
 
+  chrome.tabs.onActivated.addListener((activeInfo) => {
+    enqueue(() => onActivated(activeInfo));
+  });
+
   chrome.tabs.onRemoved.addListener((tabId) => {
     enqueue(() => forgetTab(tabId));
+    enqueue(() => chrome.storage.session.remove(cameFromKey(tabId)));
   });
 
   chrome.alarms.onAlarm.addListener((alarm) => {
