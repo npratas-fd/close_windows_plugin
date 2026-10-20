@@ -1,5 +1,5 @@
 import { findMatchingEntry, suggestEntry } from './src/matcher.js';
-import { addEntry, loadSettings } from './src/settings.js';
+import { activeEntries, addEntry, loadSettings } from './src/settings.js';
 
 const statusCard = document.getElementById('tab-status');
 const statusText = document.getElementById('tab-status-text');
@@ -57,10 +57,12 @@ keepButton.addEventListener('click', async () => {
 
 // --- Add this page ---------------------------------------------------------
 
-function renderAdd({ urls, seconds }, addedEntry) {
+function renderAdd(settings, addedEntry) {
   addError.hidden = true;
+  const { urls, seconds } = settings;
   const suggestion = suggestEntry(tab?.url);
-  const match = suggestion === null ? null : findMatchingEntry(tab.url, urls);
+  const match = suggestion === null ? null : findMatchingEntry(tab.url, activeEntries(settings));
+  const offMatch = suggestion === null || match !== null ? null : findMatchingEntry(tab.url, urls);
 
   if (addedEntry) {
     showNote('added', 'Added ', code(addedEntry), `. Tabs that open it from now on close after ${seconds} s.`);
@@ -68,6 +70,8 @@ function renderAdd({ urls, seconds }, addedEntry) {
     showNote('muted', 'Pages like this one can’t be closed automatically.');
   } else if (match !== null) {
     showNote('muted', 'This page is in your list as ', code(match), '.');
+  } else if (offMatch !== null) {
+    showNote('muted', 'This page is in your list as ', code(offMatch), ', but that entry is turned off.');
   } else {
     addNote.hidden = true;
     addForm.hidden = false;

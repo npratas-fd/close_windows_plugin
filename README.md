@@ -30,9 +30,14 @@ While a tab is counting down, the icon shows a badge with the time left
 
 ## Configure
 
-**Settings** in the menu (or **Details → Extension options**) opens the settings page:
+**Settings** in the menu (or **Details → Extension options**) opens the settings page.
+Every change is saved straight away; a notice at the bottom confirms it, with
+**Undo** after removing an entry or turning one off.
 
-- **Pages to close** – one entry per line.
+- **Pages to close** – type an entry and press **Add**. Each entry has a switch to
+  turn it off without deleting it, the number of tabs it has closed, and a ✕ to
+  remove it. **Edit as text** shows the whole list one entry per line, for pasting
+  or tidying several at once.
 - **Close after** – seconds to wait before closing; one value for every entry (default 10).
 
 ### How entries match
@@ -65,7 +70,9 @@ sure the delay leaves you time to click **Open**.
 The settings page lists the last 50 tabs the extension closed, newest first:
 title, full address, when it closed and which entry matched it. **Reopen**
 opens the page again in a new tab that is kept open (it is not closed again
-unless it leaves the listed pages and comes back). **Clear** empties the list.
+unless it leaves the listed pages and comes back). **Stop closing these** turns
+off the entry that closed it, for when a tab was closed that shouldn't have
+been. **Clear** empties the list (the per-entry counts stay).
 The history is stored on this computer only (`chrome.storage.local`); tabs
 you close yourself, or that leave the listed pages in time, are not recorded.
 
@@ -84,8 +91,10 @@ npm test
   updates the badge, records closed tabs, and answers the `get-tab-status`,
   `keep-tab-open`, `reopen-tab` and `clear-history` messages from the extension
   pages.
-- `src/history.js` – the list of closed tabs in `chrome.storage.local`.
-- `src/settings.js` – settings defaults, form validation and adding entries.
+- `src/history.js` – the list of closed tabs and the per-entry counts in
+  `chrome.storage.local`.
+- `src/settings.js` – settings defaults, validation, and adding, removing,
+  turning off and bulk-editing entries.
 - `popup.*` – the toolbar menu; `options.*` – the settings page; `theme.css` –
   shared colours and base styles.
 - `tests/fake-browser.js` – in-memory stand-in for the Chrome APIs used in tests.

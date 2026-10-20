@@ -362,3 +362,50 @@ test('clears the history', async (t) => {
   await browser.sendMessage({ type: 'clear-history' });
   assert.deepEqual(history(browser), []);
 });
+
+// ---- Entries turned off and per-entry counts ---------------------------------
+
+test('does not close tabs that only match an entry that is turned off', async (t) => {
+  const { browser } = start(t, { urls: ['zoom.us/j/', 'example.org'], disabled: ['ZOOM.us/j/'], seconds: 5 });
+
+  const tab = browser.openTab('https://zoom.us/j/1');
+  await settle();
+  await advance(t, 60_000);
+
+  assert.equal(browser.hasTab(tab), true);
+  assert.equal(browser.badgeText(tab), '');
+});
+
+test('does not close a tab whose entry was turned off before the deadline', async (t) => {
+  const { browser } = start(t, { urls: ['zoom.us/j/'], seconds: 5 });
+
+  const tab = browser.openTab('https://zoom.us/j/1');
+  await settle();
+  browser.setSyncStorage({ disabled: ['zoom.us/j/'] });
+  await advance(t, 5000);
+
+  assert.equal(browser.hasTab(tab), true);
+});
+
+test('counts how many tabs each entry has closed', async (t) => {
+  const { browser } = start(t, { urls: ['zoom.us/j/', 'example.org'], seconds: 5 });
+
+  browser.openTab('https://zoom.us/j/1');
+  browser.openTab('https://www.example.org/done');
+  browser.openTab('https://zoom.us/j/2');
+  await settle();
+  await advanceSeconds(t, 5);
+
+  assert.deepEqual(browser.readStorage('local', 'closedCounts'), { 'zoom.us/j/': 2, 'example.org': 1 });
+});
+
+test('clearing the history keeps the per-entry counts', async (t) => {
+  const { browser } = start(t, { urls: ['zoom.us/j/'], seconds: 5 });
+
+  browser.openTab('https://zoom.us/j/1');
+  await settle();
+  await advance(t, 5000);
+  await browser.sendMessage({ type: 'clear-history' });
+
+  assert.deepEqual(browser.readStorage('local', 'closedCounts'), { 'zoom.us/j/': 1 });
+});

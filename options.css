@@ -1,27 +1,23 @@
 body {
-  padding: 32px 16px;
+  padding: 32px 16px 96px;
   background: var(--bg);
 }
 
 main {
-  max-width: 640px;
+  max-width: 680px;
   margin: 0 auto;
-  padding: 24px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
 }
 
-header {
+.page-header {
   display: flex;
   gap: 14px;
   align-items: center;
-  margin-bottom: 24px;
+  margin: 0 4px 20px;
 }
 
 h1 {
   margin: 0;
-  font-size: 20px;
+  font-size: 22px;
 }
 
 .lede {
@@ -29,8 +25,27 @@ h1 {
   color: var(--muted);
 }
 
-.field {
-  margin-bottom: 20px;
+.card {
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.card + .card {
+  margin-top: 16px;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
 }
 
 label {
@@ -40,64 +55,164 @@ label {
 }
 
 .hint {
-  margin: 0 0 8px;
+  margin: 0;
   color: var(--muted);
   font-size: 13px;
 }
 
-.field > .hint:last-child {
-  margin: 8px 0 0;
-}
-
-textarea {
-  resize: vertical;
-}
-
-.seconds {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.seconds input {
-  width: 100px;
-}
-
-.actions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-#status {
-  color: var(--success);
-}
-
-#status.error {
+.error {
+  margin: 6px 0 0;
   color: var(--error);
-}
-
-#history {
-  margin-top: 28px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
-}
-
-.section-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-}
-
-h2 {
-  margin: 0 0 4px;
-  font-size: 16px;
+  font-size: 13px;
 }
 
 .empty {
   margin: 12px 0 0;
   color: var(--muted);
 }
+
+/* ---- Pages to close ------------------------------------------------------ */
+
+.add-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.add-row button {
+  flex: none;
+  padding: 8px 18px;
+}
+
+.entries {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.entries:empty {
+  display: none;
+}
+
+.entry {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 8px 8px 12px;
+}
+
+.entry + .entry {
+  border-top: 1px solid var(--border);
+}
+
+.entry-text {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  background: none;
+  font-size: 13px;
+}
+
+.entry.off .entry-text {
+  color: var(--muted);
+}
+
+.entry-count {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+input.switch {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 32px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+input.switch::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.15s;
+}
+
+input.switch:checked {
+  background: var(--accent);
+}
+
+input.switch:checked::before {
+  transform: translateX(14px);
+}
+
+input.switch:focus {
+  outline: none;
+}
+
+input.switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.icon-button {
+  display: flex;
+  flex: none;
+  padding: 4px;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+}
+
+.icon-button:hover {
+  background: var(--code-bg);
+  color: var(--text);
+  filter: none;
+}
+
+#text-view textarea {
+  margin: 14px 0 6px;
+  resize: vertical;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.delay {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.seconds {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.seconds input {
+  width: 90px;
+}
+
+/* ---- Recently closed ----------------------------------------------------- */
 
 .history {
   margin: 12px 0 0;
@@ -144,6 +259,46 @@ h2 {
   font-size: 12px;
 }
 
-.history button {
+.item-actions {
+  display: flex;
   flex: none;
+  gap: 14px;
+  align-items: center;
+}
+
+.item-state {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* ---- Saved / undo notice --------------------------------------------------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  max-width: calc(100% - 32px);
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--text);
+  color: var(--surface);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 8px);
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.toast.show {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+}
+
+.toast button.link {
+  color: var(--surface);
+  font-weight: 600;
+  text-decoration: underline;
 }

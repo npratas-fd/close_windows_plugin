@@ -1,6 +1,6 @@
 import { clearHistory, recordClosedTab } from './history.js';
 import { findMatchingEntry, urlMatches } from './matcher.js';
-import { loadSettings } from './settings.js';
+import { activeEntries, loadSettings } from './settings.js';
 
 // A tab that reaches a listed URL gets a deadline, kept in session storage so it
 // survives the service worker being shut down. A timer closes the tab on time
@@ -32,8 +32,8 @@ export function registerAutoClose(chrome) {
   };
 
   async function onUrlChanged(tabId, url) {
-    const { urls, seconds } = await loadSettings(chrome.storage.sync);
-    if (!urlMatches(url, urls)) {
+    const settings = await loadSettings(chrome.storage.sync);
+    if (!urlMatches(url, activeEntries(settings))) {
       await forgetTab(tabId);
       return;
     }
@@ -41,7 +41,7 @@ export function registerAutoClose(chrome) {
     const flags = await chrome.storage.session.get([pendingKey(tabId), keptKey(tabId)]);
     if (Object.keys(flags).length > 0) return;
 
-    const delay = seconds * 1000;
+    const delay = settings.seconds * 1000;
     const deadline = Date.now() + delay;
     await chrome.storage.session.set({ [pendingKey(tabId)]: deadline });
     await chrome.alarms.create(pendingKey(tabId), { when: deadline });
@@ -64,8 +64,7 @@ export function registerAutoClose(chrome) {
     await cancelClose(tabId);
     const tab = await chrome.tabs.get(tabId).catch(() => null);
     if (!tab) return;
-    const { urls } = await loadSettings(chrome.storage.sync);
-    const entry = findMatchingEntry(tab.url, urls);
+    const entry = findMatchingEntry(tab.url, activeEntries(await loadSettings(chrome.storage.sync)));
     if (entry === null) return;
     await chrome.tabs.remove(tabId);
     await recordClosedTab(chrome.storage.local, {
