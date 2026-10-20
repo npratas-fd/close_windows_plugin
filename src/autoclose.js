@@ -1,4 +1,5 @@
-import { urlMatches } from './matcher.js';
+import { clearHistory, recordClosedTab } from './history.js';
+import { findMatchingEntry, urlMatches } from './matcher.js';
 import { loadSettings } from './settings.js';
 
 // A tab that reaches a listed URL gets a deadline, kept in session storage so it
@@ -7,7 +8,8 @@ import { loadSettings } from './settings.js';
 // to finish the job. Before closing, the tab's current URL is checked against
 // the current list once more. While a tab is closing, the toolbar badge shows
 // the time left. The popup can ask to keep a tab open; it then stays open until
-// it leaves the listed pages.
+// it leaves the listed pages. Every tab closed here is added to the history;
+// a page reopened from it starts out kept open.
 
 const PENDING_PREFIX = 'close-tab-';
 const KEPT_PREFIX = 'keep-tab-';
@@ -63,7 +65,23 @@ export function registerAutoClose(chrome) {
     const tab = await chrome.tabs.get(tabId).catch(() => null);
     if (!tab) return;
     const { urls } = await loadSettings(chrome.storage.sync);
-    if (urlMatches(tab.url, urls)) await chrome.tabs.remove(tabId);
+    const entry = findMatchingEntry(tab.url, urls);
+    if (entry === null) return;
+    await chrome.tabs.remove(tabId);
+    await recordClosedTab(chrome.storage.local, {
+      url: tab.url,
+      title: tab.title ?? '',
+      entry,
+      closedAt: Date.now(),
+    });
+  }
+
+  async function reopen(url) {
+    // Runs inside the queue, so the new tab's URL event is handled only after
+    // it has been marked as kept.
+    const tab = await chrome.tabs.create({ url });
+    await chrome.storage.session.set({ [keptKey(tab.id)]: true });
+    return { tabId: tab.id };
   }
 
   async function keepOpen(tabId) {
@@ -149,10 +167,15 @@ export function registerAutoClose(chrome) {
   });
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    const handlers = { 'keep-tab-open': keepOpen, 'get-tab-status': tabStatus };
+    const handlers = {
+      'keep-tab-open': () => keepOpen(message.tabId),
+      'get-tab-status': () => tabStatus(message.tabId),
+      'reopen-tab': () => reopen(message.url),
+      'clear-history': () => clearHistory(chrome.storage.local).then(() => ({})),
+    };
     const handler = handlers[message?.type];
     if (!handler) return false;
-    enqueue(() => handler(message.tabId)).then(sendResponse, () => sendResponse(null));
+    enqueue(handler).then(sendResponse, () => sendResponse(null));
     return true;
   });
 

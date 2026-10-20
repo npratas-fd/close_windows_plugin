@@ -7,11 +7,12 @@
 // browser state survives. Like Chrome, an alarm or a message from the popup
 // starts a new worker when none is running.
 
-export function createFakeBrowser({ sync = {}, boot = () => {} } = {}) {
+export function createFakeBrowser({ sync = {}, local = {}, boot = () => {} } = {}) {
   const state = {
     tabs: new Map(),
     nextTabId: 1,
     sync: structuredClone(sync),
+    local: structuredClone(local),
     session: {},
     alarms: new Map(),
     badges: new Map(),
@@ -43,9 +44,13 @@ export function createFakeBrowser({ sync = {}, boot = () => {} } = {}) {
         onRemoved: worker.events.onRemoved,
         get: call(async (tabId) => tabSnapshot(requireTab(tabId))),
         remove: call(async (tabId) => removeTab(tabId)),
+        // Like Chrome, the new tab's onUpdated event may arrive before the
+        // promise resolves.
+        create: call(async ({ url }) => tabSnapshot(state.tabs.get(addTab(url, '')))),
       },
       storage: {
         sync: createStorageArea(() => state.sync, call),
+        local: createStorageArea(() => state.local, call),
         session: createStorageArea(() => state.session, call),
       },
       alarms: {
@@ -82,6 +87,13 @@ export function createFakeBrowser({ sync = {}, boot = () => {} } = {}) {
     return tab;
   }
 
+  function addTab(url, title) {
+    const tab = { id: state.nextTabId++, windowId: 1, url, title, status: 'loading' };
+    state.tabs.set(tab.id, tab);
+    emit('onUpdated', tab.id, { status: 'loading', url }, tabSnapshot(tab));
+    return tab.id;
+  }
+
   function removeTab(tabId) {
     requireTab(tabId);
     state.tabs.delete(tabId);
@@ -94,11 +106,8 @@ export function createFakeBrowser({ sync = {}, boot = () => {} } = {}) {
     terminateWorker,
 
     // A page opens in a new tab (e.g. launched by a desktop app).
-    openTab(url) {
-      const tab = { id: state.nextTabId++, windowId: 1, url, status: 'loading' };
-      state.tabs.set(tab.id, tab);
-      emit('onUpdated', tab.id, { status: 'loading', url }, tabSnapshot(tab));
-      return tab.id;
+    openTab(url, title = '') {
+      return addTab(url, title);
     },
 
     // An existing tab navigates or is redirected to another URL.
@@ -116,6 +125,15 @@ export function createFakeBrowser({ sync = {}, boot = () => {} } = {}) {
 
     hasTab(tabId) {
       return state.tabs.has(tabId);
+    },
+
+    tabIdsWithUrl(url) {
+      return [...state.tabs.values()].filter((tab) => tab.url === url).map((tab) => tab.id);
+    },
+
+    // What the extension stored, e.g. readStorage('local', 'history').
+    readStorage(area, key) {
+      return structuredClone(state[area][key]);
     },
 
     // Text of the toolbar badge while the given tab is the active one.

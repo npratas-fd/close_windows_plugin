@@ -23,6 +23,7 @@ Click the extension icon to open its menu:
   counting down. The tab then stays open until it leaves the listed pages; if it
   comes back to one later, the countdown starts again.
 - **Settings** – opens the settings page.
+- **History** – opens the list of recently closed tabs (see below).
 
 While a tab is counting down, the icon shows a badge with the time left
 (seconds, or minutes above 99 s).
@@ -59,6 +60,15 @@ While a tab is counting down, the icon shows a badge with the time left
 Tip: if Chrome asks "Open zoom.us?" and you haven't ticked "Always allow", make
 sure the delay leaves you time to click **Open**.
 
+### Recently closed
+
+The settings page lists the last 50 tabs the extension closed, newest first:
+title, full address, when it closed and which entry matched it. **Reopen**
+opens the page again in a new tab that is kept open (it is not closed again
+unless it leaves the listed pages and comes back). **Clear** empties the list.
+The history is stored on this computer only (`chrome.storage.local`); tabs
+you close yourself, or that leave the listed pages in time, are not recorded.
+
 ## Development
 
 No dependencies or build step. Tests use Node's built-in test runner (Node 22+):
@@ -71,8 +81,10 @@ npm test
   entry for a page.
 - `src/autoclose.js` – schedules and cancels closes (timer while the service
   worker is alive, plus an alarm so a stopped worker still closes the tab),
-  updates the badge, and answers the popup's `get-tab-status` / `keep-tab-open`
-  messages.
+  updates the badge, records closed tabs, and answers the `get-tab-status`,
+  `keep-tab-open`, `reopen-tab` and `clear-history` messages from the extension
+  pages.
+- `src/history.js` – the list of closed tabs in `chrome.storage.local`.
 - `src/settings.js` – settings defaults, form validation and adding entries.
 - `popup.*` – the toolbar menu; `options.*` – the settings page; `theme.css` –
   shared colours and base styles.

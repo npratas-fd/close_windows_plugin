@@ -34,10 +34,6 @@ h1 {
 
 button.secondary {
   width: 100%;
-  padding: 6px 12px;
-  border: 1px solid var(--accent);
-  background: transparent;
-  color: var(--accent);
 }
 
 label {
@@ -80,22 +76,9 @@ label {
 }
 
 footer {
+  display: flex;
+  gap: 16px;
   margin-top: 12px;
   padding-top: 10px;
   border-top: 1px solid var(--border);
-}
-
-button.link {
-  padding: 0;
-  background: none;
-  color: var(--accent);
-  font-weight: 500;
-}
-
-button.link:hover {
-  text-decoration: underline;
-}
-
-[hidden] {
-  display: none !important;
 }

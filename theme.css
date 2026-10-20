@@ -84,3 +84,25 @@ button:disabled {
   cursor: default;
   filter: none;
 }
+
+button.secondary {
+  padding: 6px 12px;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+}
+
+button.link {
+  padding: 0;
+  background: none;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+button.link:hover {
+  text-decoration: underline;
+}
+
+[hidden] {
+  display: none !important;
+}

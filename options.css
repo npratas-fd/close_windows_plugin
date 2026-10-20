@@ -76,3 +76,74 @@ textarea {
 #status.error {
   color: var(--error);
 }
+
+#history {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+.empty {
+  margin: 12px 0 0;
+  color: var(--muted);
+}
+
+.history {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.history li {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.history li:first-child {
+  border-top: 0;
+}
+
+.history .item {
+  flex: 1;
+  min-width: 0;
+}
+
+.history .item-title,
+.history .item-url {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.history .item-title {
+  font-weight: 600;
+}
+
+.history .item-url {
+  color: var(--muted);
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.history .item-meta {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.history button {
+  flex: none;
+}

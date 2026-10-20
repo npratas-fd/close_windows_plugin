@@ -15,6 +15,11 @@ document.getElementById('open-settings').addEventListener('click', () => {
   window.close();
 });
 
+document.getElementById('open-history').addEventListener('click', async () => {
+  await chrome.tabs.create({ url: chrome.runtime.getURL('options.html#history') });
+  window.close();
+});
+
 const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
 // --- This tab: countdown and "keep open" ---------------------------------

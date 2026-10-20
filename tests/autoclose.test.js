@@ -254,3 +254,111 @@ test('reports when a tab will close, whether it is kept, or neither', async (t) 
   await keepOpen(browser, closing);
   assert.deepEqual(await tabStatus(browser, closing), { state: 'kept' });
 });
+
+// ---- History of closed tabs -------------------------------------------------
+
+const history = (browser) => browser.readStorage('local', 'history') ?? [];
+
+test('records a closed tab in the history with the entry that matched', async (t) => {
+  const { browser } = start(t, { urls: ['example.org', 'zoom.us/j/'], seconds: 5 });
+
+  browser.openTab('https://us02web.zoom.us/j/123?pwd=abc', 'Launch Meeting - Zoom');
+  await settle();
+  await advance(t, 5000);
+
+  assert.deepEqual(history(browser), [
+    {
+      url: 'https://us02web.zoom.us/j/123?pwd=abc',
+      title: 'Launch Meeting - Zoom',
+      entry: 'zoom.us/j/',
+      closedAt: 5000,
+    },
+  ]);
+});
+
+test('lists the most recently closed tab first', async (t) => {
+  const { browser } = start(t, { urls: ['zoom.us/j/'], seconds: 5 });
+
+  browser.openTab('https://zoom.us/j/1');
+  await settle();
+  await advance(t, 2000);
+  browser.openTab('https://zoom.us/j/2');
+  await settle();
+  await advanceSeconds(t, 5);
+
+  assert.deepEqual(
+    history(browser).map((item) => [item.url, item.closedAt]),
+    [
+      ['https://zoom.us/j/2', 7000],
+      ['https://zoom.us/j/1', 5000],
+    ],
+  );
+});
+
+test('keeps only the 50 most recently closed tabs', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 0 });
+  const older = Array.from({ length: 50 }, (_, i) => ({
+    url: `https://zoom.us/j/old-${i}`,
+    title: '',
+    entry: 'zoom.us/j/',
+    closedAt: -1000 - i,
+  }));
+  const browser = createFakeBrowser({
+    sync: { urls: ['zoom.us/j/'], seconds: 5 },
+    local: { history: older },
+    boot: registerAutoClose,
+  });
+  browser.startWorker();
+
+  browser.openTab('https://zoom.us/j/new');
+  await settle();
+  await advance(t, 5000);
+
+  const urls = history(browser).map((item) => item.url);
+  assert.equal(urls.length, 50);
+  assert.equal(urls[0], 'https://zoom.us/j/new');
+  assert.equal(urls[1], 'https://zoom.us/j/old-0');
+  assert.equal(urls.at(-1), 'https://zoom.us/j/old-48');
+});
+
+test('does not record tabs the extension did not close', async (t) => {
+  const { browser } = start(t, { urls: ['zoom.us/j/'], seconds: 5 });
+
+  const closedByUser = browser.openTab('https://zoom.us/j/1');
+  const kept = browser.openTab('https://zoom.us/j/2');
+  const navigatedAway = browser.openTab('https://zoom.us/j/3');
+  await settle();
+  browser.closeTab(closedByUser);
+  await keepOpen(browser, kept);
+  browser.navigate(navigatedAway, 'https://zoom.us/profile');
+  await settle();
+  await advance(t, 60_000);
+
+  assert.deepEqual(history(browser), []);
+});
+
+test('reopens a closed page in a new tab that is not closed again', async (t) => {
+  const { browser } = start(t, { urls: ['zoom.us/j/'], seconds: 5 });
+  const url = 'https://zoom.us/j/1?pwd=abc';
+
+  const response = await browser.sendMessage({ type: 'reopen-tab', url });
+  await settle();
+  const [reopened] = browser.tabIdsWithUrl(url);
+
+  assert.deepEqual(response, { tabId: reopened });
+  assert.equal(browser.badgeText(reopened), '');
+  await advance(t, 60_000);
+  assert.equal(browser.hasTab(reopened), true);
+});
+
+test('clears the history', async (t) => {
+  const { browser } = start(t, { urls: ['zoom.us/j/'], seconds: 5 });
+
+  browser.openTab('https://zoom.us/j/1');
+  await settle();
+  await advance(t, 5000);
+  assert.equal(history(browser).length, 1);
+
+  await browser.sendMessage({ type: 'clear-history' });
+  assert.deepEqual(history(browser), []);
+});
